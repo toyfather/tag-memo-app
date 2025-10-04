@@ -608,51 +608,8 @@ const clearTagSelection = () => {
     setDraggedFrom(null);
   };
 
+
 const handleSaveMemo = async () => {
-  if (!newMemo.title.trim()) return;
-
-  try {
-    if (editingMemo !== null) {
-      // 메모 수정
-      const memo = memos[editingMemo];
-      const updatedMemo = await api.updateMemo(memo.id, {
-        title: newMemo.title,
-        content: newMemo.content,
-        tags: newMemo.tags,
-        primaryTag: newMemo.primaryTag,
-        date: newMemo.date
-      });
-      
-      setMemos(memos.map((m, idx) => 
-        idx === editingMemo ? { ...updatedMemo, tags: newMemo.tags } : m
-      ));
-      setEditingMemo(null);
-    } else {
-      // 메모 생성
-      const createdMemo = await api.createMemo({
-        title: newMemo.title,
-        content: newMemo.content,
-        tags: newMemo.tags,
-        primaryTag: newMemo.primaryTag,
-        date: newMemo.date
-      });
-      
-      setMemos([...memos, { ...createdMemo, tags: newMemo.tags }]);
-    }
-
-    setNewMemo({ 
-      title: '', 
-      content: '', 
-      tags: [], 
-      primaryTag: '',
-      date: new Date().toISOString().split('T')[0]
-    });
-    setIsAddingMemo(false);
-  } catch (err) {
-    console.error('메모 저장 실패:', err);
-    alert('메모 저장에 실패했습니다.');
-  }
-};const handleSaveMemo = async () => {
   if (!newMemo.title.trim()) return;
 
   try {
@@ -1065,12 +1022,12 @@ const handleDeleteMemo = async (index) => {
         <div className="relative">
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           <input
-            type="text"
-            placeholder="제목이나 태그로 검색..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+  type="text"
+  placeholder="제목이나 태그로 검색..."
+  value={searchQuery}
+  onChange={(e) => setSearchQuery(e.target.value)}
+  className="w-full pl-12 pr-4 py-4 text-base border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+/>
         </div>
       </div>
 
@@ -1081,10 +1038,10 @@ const handleDeleteMemo = async (index) => {
       ) : (
         filteredMemos.map((memo, index) => (
           <div
-            key={memo.id || index}
-            onClick={() => handleEditMemo(memos.indexOf(memo))}
-            className="bg-white p-5 rounded-xl border-2 border-gray-200 hover:border-indigo-300 hover:shadow-md transition cursor-pointer"
-          >
+  key={memo.id || index}
+  onClick={() => handleEditMemo(memos.indexOf(memo))}
+  className="bg-white p-6 rounded-xl border-2 border-gray-200 active:border-indigo-400 active:shadow-lg transition cursor-pointer"
+>
             <div className="flex justify-between items-start mb-2">
               <h3 className="text-xl font-bold text-gray-800">{memo.title}</h3>
               <button
@@ -1811,17 +1768,17 @@ const renderTagsPage = () => (
         {currentPage === 'manage' && renderTagManagementPage()}
         {currentPage === 'calendar' && renderCalendarPage()}
 
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 shadow-lg z-50">
-  <div className="max-w-6xl mx-auto flex justify-around py-2 sm:py-3">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 shadow-lg z-50">
+  <div className="max-w-6xl mx-auto flex justify-around py-3 px-2">
     <button
-      onClick={() => setCurrentPage('home')}
-      className={`flex flex-col items-center gap-0.5 sm:gap-1 px-3 sm:px-6 py-2 rounded-lg transition ${
-        currentPage === 'home' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-600'
-      }`}
-    >
-      <Home size={20} className="sm:w-6 sm:h-6" />
-      <span className="text-[10px] sm:text-xs font-medium">홈</span>
-    </button>
+  onClick={() => setCurrentPage('home')}
+  className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition min-w-[70px] ${
+    currentPage === 'home' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-600'
+  }`}
+>
+  <Home size={24} />
+  <span className="text-xs font-medium">홈</span>
+</button>
             <button
               onClick={() => setCurrentPage('tags')}
               className={`flex flex-col items-center gap-1 px-6 py-2 rounded-lg transition ${
@@ -1854,9 +1811,9 @@ const renderTagsPage = () => (
 
         <button
   onClick={() => setIsAddingMemo(true)}
-  className="fixed bottom-16 sm:bottom-20 right-4 sm:right-8 w-14 h-14 sm:w-16 sm:h-16 bg-indigo-600 text-white rounded-full shadow-2xl hover:bg-indigo-700 transition flex items-center justify-center hover:scale-110 active:scale-95 z-40"
+  className="fixed bottom-24 right-6 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl hover:bg-indigo-700 transition flex items-center justify-center active:scale-95 z-40"
 >
-  <Plus size={24} className="sm:w-7 sm:h-7" />
+  <Plus size={28} />
 </button>
       </div>
     </div>
