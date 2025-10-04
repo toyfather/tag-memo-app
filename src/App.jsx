@@ -4,25 +4,7 @@ import viteLogo from '/vite.svg'
 import './App.css'
 import './index.css';
 import { X, Plus, Tag, Star, Search, Calendar, Home, Settings, ChevronRight, ChevronDown, Grip } from 'lucide-react';
-// 데이터 저장/불러오기 유틸리티 (나중에 API로 쉽게 교체 가능)
-const storage = {
-  save: (key, data) => {
-    try {
-      localStorage.setItem(key, JSON.stringify(data));
-    } catch (e) {
-      console.error('데이터 저장 실패:', e);
-    }
-  },
-  load: (key, defaultValue) => {
-    try {
-      const item = localStorage.getItem(key);
-      return item ? JSON.parse(item) : defaultValue;
-    } catch (e) {
-      console.error('데이터 불러오기 실패:', e);
-      return defaultValue;
-    }
-  }
-};
+import { api } from './api';
 //여기까지가 데이터 저장/불러오기 유틸리티
 
 
@@ -231,16 +213,12 @@ const DEFAULT_TAG_COLORS = {};
 
 export default function TagMemoApp() {
 
-  const [memos, setMemos] = useState(() => storage.load('memos', []));
-const [tagHierarchy, setTagHierarchy] = useState(() => 
-  storage.load('tagHierarchy', DEFAULT_TAG_HIERARCHY)   
-);
-const [uncategorizedTags, setUncategorizedTags] = useState(() => 
-  storage.load('uncategorizedTags', DEFAULT_UNCATEGORIZED_TAGS)
-);
-const [tagColors, setTagColors] = useState(() => 
-  storage.load('tagColors', DEFAULT_TAG_COLORS)
-);
+const [memos, setMemos] = useState([]);
+const [tagHierarchy, setTagHierarchy] = useState(DEFAULT_TAG_HIERARCHY);
+const [uncategorizedTags, setUncategorizedTags] = useState(DEFAULT_UNCATEGORIZED_TAGS);
+const [tagColors, setTagColors] = useState(DEFAULT_TAG_COLORS);
+const [loading, setLoading] = useState(true);
+
 //테그색상구분
   const colorOptions = [
     { name: '빨강', value: 'bg-red-200 text-red-800' },
@@ -279,22 +257,36 @@ const [tagColors, setTagColors] = useState(() =>
   const [editingTagColor, setEditingTagColor] = useState(null); 
 
 //데이터로드
-React.useEffect(() => {
-  storage.save('memos', memos);
-}, [memos]);
-
-React.useEffect(() => {
-  storage.save('tagHierarchy', tagHierarchy);
-}, [tagHierarchy]);
-
-React.useEffect(() => {
-  storage.save('uncategorizedTags', uncategorizedTags);
-}, [uncategorizedTags]);
-
-React.useEffect(() => {
-  storage.save('tagColors', tagColors);
-}, [tagColors]);
-
+useEffect(() => {
+  const loadData = async () => {
+    try {
+      const [memosData, hierarchyData, uncategorizedData] = await Promise.all([
+        api.getMemos(),
+        api.getTagHierarchy(),
+        api.getUncategorizedTags()
+      ]);
+      
+      setMemos(memosData);
+      if (hierarchyData.length > 0) {
+        // DB 데이터를 프론트엔드 형식으로 변환
+        const convertToHierarchy = (data) => {
+          // 변환 로직은 나중에 구현
+          return DEFAULT_TAG_HIERARCHY;
+        };
+        setTagHierarchy(convertToHierarchy(hierarchyData));
+      }
+      if (uncategorizedData.length > 0) {
+        setUncategorizedTags(uncategorizedData.map(t => t.name));
+      }
+      setLoading(false);
+    } catch (err) {
+      console.error('데이터 로드 실패:', err);
+      setLoading(false);
+    }
+  };
+  
+  loadData();
+}, []);
 
 //데이터로드끝
   const getAllTags = () => {
@@ -616,16 +608,36 @@ const clearTagSelection = () => {
     setDraggedFrom(null);
   };
 
-  const handleSaveMemo = () => {
-    if (!newMemo.title.trim()) return;
+const handleSaveMemo = async () => {
+  if (!newMemo.title.trim()) return;
 
+  try {
     if (editingMemo !== null) {
-      setMemos(memos.map((memo, idx) => 
-        idx === editingMemo ? { ...newMemo } : memo
+      // 메모 수정
+      const memo = memos[editingMemo];
+      const updatedMemo = await api.updateMemo(memo.id, {
+        title: newMemo.title,
+        content: newMemo.content,
+        tags: newMemo.tags,
+        primaryTag: newMemo.primaryTag,
+        date: newMemo.date
+      });
+      
+      setMemos(memos.map((m, idx) => 
+        idx === editingMemo ? { ...updatedMemo, tags: newMemo.tags } : m
       ));
       setEditingMemo(null);
     } else {
-      setMemos([...memos, { ...newMemo, id: Date.now() }]);
+      // 메모 생성
+      const createdMemo = await api.createMemo({
+        title: newMemo.title,
+        content: newMemo.content,
+        tags: newMemo.tags,
+        primaryTag: newMemo.primaryTag,
+        date: newMemo.date
+      });
+      
+      setMemos([...memos, { ...createdMemo, tags: newMemo.tags }]);
     }
 
     setNewMemo({ 
@@ -636,7 +648,55 @@ const clearTagSelection = () => {
       date: new Date().toISOString().split('T')[0]
     });
     setIsAddingMemo(false);
-  };
+  } catch (err) {
+    console.error('메모 저장 실패:', err);
+    alert('메모 저장에 실패했습니다.');
+  }
+};const handleSaveMemo = async () => {
+  if (!newMemo.title.trim()) return;
+
+  try {
+    if (editingMemo !== null) {
+      // 메모 수정
+      const memo = memos[editingMemo];
+      const updatedMemo = await api.updateMemo(memo.id, {
+        title: newMemo.title,
+        content: newMemo.content,
+        tags: newMemo.tags,
+        primaryTag: newMemo.primaryTag,
+        date: newMemo.date
+      });
+      
+      setMemos(memos.map((m, idx) => 
+        idx === editingMemo ? { ...updatedMemo, tags: newMemo.tags } : m
+      ));
+      setEditingMemo(null);
+    } else {
+      // 메모 생성
+      const createdMemo = await api.createMemo({
+        title: newMemo.title,
+        content: newMemo.content,
+        tags: newMemo.tags,
+        primaryTag: newMemo.primaryTag,
+        date: newMemo.date
+      });
+      
+      setMemos([...memos, { ...createdMemo, tags: newMemo.tags }]);
+    }
+
+    setNewMemo({ 
+      title: '', 
+      content: '', 
+      tags: [], 
+      primaryTag: '',
+      date: new Date().toISOString().split('T')[0]
+    });
+    setIsAddingMemo(false);
+  } catch (err) {
+    console.error('메모 저장 실패:', err);
+    alert('메모 저장에 실패했습니다.');
+  }
+};
 
   const handleAddTag = (tag) => {
     const trimmedTag = tag.trim();
@@ -672,9 +732,17 @@ const clearTagSelection = () => {
     });
   };
 
-  const handleDeleteMemo = (index) => {
+const handleDeleteMemo = async (index) => {
+  const memo = memos[index];
+  
+  try {
+    await api.deleteMemo(memo.id);
     setMemos(memos.filter((_, idx) => idx !== index));
-  };
+  } catch (err) {
+    console.error('메모 삭제 실패:', err);
+    alert('메모 삭제에 실패했습니다.');
+  }
+};
 
   const handleEditMemo = (index) => {
     setNewMemo(memos[index]);
@@ -1062,49 +1130,45 @@ const clearTagSelection = () => {
     </div>
   );
 
-  // 태그 트리 렌더링
- const renderTagTree = (tagList, level = 0) => {
+// 태그 트리 렌더링
+const renderTagTree = (tagList, level = 0) => {
   return tagList.map(tag => {
     const isExpanded = expandedTags[tag.id];
     const hasChildren = tag.children && tag.children.length > 0;
     const tagMemoCount = memos.filter(m => m.tags.includes(tag.name)).length;
+    const isSelected = selectedTags.includes(tag.name);
     
     return (
       <div key={tag.id} style={{ marginLeft: `${level * 24}px` }}>
-        {/* 기존의 button 태그를 div로 변경 */}
         <div
+          onClick={() => toggleTagSelection(tag.name)}
           className={`w-full flex items-center justify-between px-4 py-2 rounded-lg text-sm transition cursor-pointer ${
-            selectedTag === tag.name
+            isSelected
               ? 'bg-indigo-500 text-white'
               : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
           }`}
         >
-          <div 
-            className="flex items-center gap-2 flex-1"
-            onClick={() => hasChildren && toggleTag(tag.id)}
-          >
+          <div className="flex items-center gap-2 flex-1">
             {hasChildren && (
-              isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleTag(tag.id);
+                }}
+                className="p-1 hover:bg-white hover:bg-opacity-20 rounded"
+              >
+                {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              </button>
             )}
-            {!hasChildren && <span className="w-4" />}
+            {!hasChildren && <span className="w-6" />}
             <Tag size={16} />
             <span>{tag.name}</span>
           </div>
           <div className="flex items-center gap-2">
             <span>({tagMemoCount})</span>
-            <button
-  onClick={(e) => {
-    e.stopPropagation();
-    toggleTagSelection(tag.name);
-  }}
-  className={`px-2 py-1 text-xs rounded ${
-    selectedTags.includes(tag.name)
-      ? 'bg-white bg-opacity-30'
-      : 'hover:bg-white hover:bg-opacity-20'
-  }`}
->
-  {selectedTags.includes(tag.name) ? '✓' : '선택'}
-</button>
+            {isSelected && (
+              <span className="text-xs bg-white bg-opacity-30 px-2 py-0.5 rounded">✓</span>
+            )}
           </div>
         </div>
         
